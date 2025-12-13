@@ -1,98 +1,49 @@
-use std::{cmp::Ord, fmt::Display};
+use std::{collections::HashMap, fmt::Debug};
 
-use crdts::merkle_reg::MerkleReg;
-use uuid::Uuid;
+use smallvec::SmallVec;
 
-use crate::blob::BlobId;
+use crate::tag::TagId;
 
-/// A stable, unique identifier for a Node.
-///
-/// This never changes, even if the Node is updated.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PartialOrd, Ord,
-)]
-pub struct NodeId(Uuid);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NodeId(pub u128);
 
-impl NodeId {
-    /// Creates a new, random NodeId.
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-impl Default for NodeId {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-impl Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+/// Dense bitmap index used for membership bitmaps.
+pub type NodeIx = u32;
 
-/// The type of Node.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
-pub enum NodeType {
-    /// A single file.
-    File,
-    /// A directory-like group of Nodes.
-    Group,
-}
-
-/// A node represents a single logical entity in the system,
-/// like a file or a group etc.
-///
-/// It has a stable ID, a name, a type and either a reference to a Blob (for files)
-/// or a set of member NodeIds (for groups).
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, Hash, Eq)]
-pub struct Node {
-    /// The stable, unique ID of this node.
+#[derive(Clone, Debug)]
+// #[derive(Clone, Debug, Getters)]
+// #[getset(get_copy = "pub")]
+pub struct NodeRecord {
     id: NodeId,
 
-    /// A user-friendly name.
-    name: String,
+    deleted: bool,
 
-    /// A reference to the data blob.
-    blob_ref: Option<BlobId>,
+    explicit_tags: SmallVec<[TagId; 4]>,
 
-    /// The type of this node.
-    node_type: NodeType,
-
-    /// Set of NodeIds that are members of this node.
-    members: MerkleReg<NodeId>,
+    date_created: String,
+    date_updated: String,
 }
 
-impl Node {
-    pub fn new(id: NodeId, name: String, node_type: NodeType) -> Self {
+impl NodeRecord {
+    pub fn new(
+        id: NodeId,
+        explicit_tags: SmallVec<[TagId; 4]>,
+        date_created: String,
+        date_updated: String,
+    ) -> Self {
         Self {
             id,
-            name,
-            blob_ref: None,
-            node_type,
-            members: MerkleReg::new(),
+            deleted: false,
+            explicit_tags,
+            date_created,
+            date_updated,
         }
     }
+}
 
-    pub fn get_id(&self) -> &NodeId {
-        &self.id
-    }
-
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
-    pub fn set_name(&mut self, name: String) {
-        self.name = name;
-    }
-
-    pub fn get_blob_ref(&self) -> Option<&BlobId> {
-        self.blob_ref.as_ref()
-    }
-
-    pub fn get_node_type(&self) -> &NodeType {
-        &self.node_type
-    }
-
-    pub fn get_members(&self) -> &MerkleReg<NodeId> {
-        &self.members
-    }
+/// Dense node indexing for bitmap usage (rebuildable).
+#[derive(Clone, Debug, Default)]
+pub struct NodeBitmapIndex {
+    pub node_to_ix: HashMap<NodeId, NodeIx>,
+    pub ix_to_node: Vec<NodeId>,
 }

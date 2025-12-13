@@ -1,8 +1,5 @@
-pub mod blob;
 pub mod node;
+pub mod node_type;
+pub mod tag;
 
-pub mod client;
-pub mod state;
-
-pub mod metadata_storage;
-pub mod network;
+pub mod repository;
