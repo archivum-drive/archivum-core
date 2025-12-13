@@ -4,11 +4,11 @@ use roaring::RoaringBitmap;
 
 use crate::{
     node::{NodeBitmapIndex, NodeId, NodeRecord},
-    tag::{TagColors, TagHierarchyIndex, TagId, TagMembershipIndex, TagPathIndex, TagRecord},
+    tag::{TagHierarchyIndex, TagId, TagMembershipIndex, TagPathIndex, TagRecord},
 };
 
 #[derive(Clone, Debug, Default)]
-pub struct Repo {
+pub struct Repository {
     pub nodes: HashMap<NodeId, NodeRecord>,
     pub tags: HashMap<TagId, TagRecord>,
 
@@ -19,7 +19,7 @@ pub struct Repo {
     pub tag_membership: TagMembershipIndex,
 }
 
-impl Repo {
+impl Repository {
     // ----------------------------
     // Construction / persistence
     // ----------------------------
@@ -57,19 +57,32 @@ impl Repo {
     }
 
     pub fn rebuild_tag_membership_indexes(&mut self) {
-        todo!("direct_nodes from nodes[*].explicit_tags; subtree_nodes via hierarchy closure");
+        todo!("direct_nodes from nodes[*].tags; subtree_nodes via hierarchy closure");
     }
 
     // ----------------------------
     // Tag operations
     // ----------------------------
 
-    pub fn get_tag_by_path(&mut self, _path: Vec<&str>) -> Result<TagId, RepoError> {
-        todo!("normalize path");
+    pub fn upsert_tag(&mut self, tag: TagRecord) -> Result<TagId, RepoError> {
+        let tag_id = *tag.get_id();
+        self.tags.insert(tag_id, tag);
+
+        // rebuild indexes
+
+        Ok(tag_id)
+    }
+
+    pub fn delete_tag(&mut self, _tag: TagId) -> Result<(), RepoError> {
+        todo!("tombstone tag; remove from nodes; rebuild membership");
     }
 
     pub fn get_tag(&self, _tag: TagId) -> Option<&TagRecord> {
         todo!()
+    }
+
+    pub fn get_tag_by_path(&mut self, _path: Vec<&str>) -> Result<TagId, RepoError> {
+        todo!("normalize path");
     }
 
     pub fn set_tag_path(&mut self, _tag: TagId, _new_path: Vec<&str>) -> Result<(), RepoError> {
@@ -78,28 +91,24 @@ impl Repo {
         );
     }
 
-    pub fn create_tag(&mut self, _path: Vec<&str>, _color: TagColors) -> Result<TagId, RepoError> {
-        todo!("normalize path; dedupe by path; insert new tag; rebuild indexes as needed");
-    }
-
-    pub fn delete_tag(&mut self, _tag: TagId) -> Result<(), RepoError> {
-        todo!("tombstone tag; remove from nodes; rebuild membership");
-    }
-
     // ----------------------------
     // Node operations
     // ----------------------------
 
-    pub fn upsert_node(&mut self, _node: NodeRecord) -> Result<(), RepoError> {
-        todo!("insert/update canonical node; update indexes incrementally or rebuild");
+    pub fn upsert_node(&mut self, node: NodeRecord) -> Result<(), RepoError> {
+        self.nodes.insert(*node.get_id(), node);
+
+        // self.rebuild_all_indexes();
+
+        Ok(())
     }
 
     pub fn delete_node(&mut self, _node: NodeId) -> Result<(), RepoError> {
         todo!("mark deleted; update membership bitmaps");
     }
 
-    pub fn get_node(&self, _node: NodeId) -> Option<&NodeRecord> {
-        todo!()
+    pub fn get_node(&self, node: NodeId) -> Option<&NodeRecord> {
+        self.nodes.get(&node)
     }
 
     pub fn iter_nodes(&self) -> impl Iterator<Item = &NodeRecord> {
@@ -110,12 +119,20 @@ impl Repo {
     // Tagging operations
     // ----------------------------
 
-    pub fn add_tag(&mut self, _node: NodeId, _tag: TagId) -> Result<(), RepoError> {
-        todo!("update node.explicit_tags; update membership indexes");
+    pub fn tag_node(&mut self, node: NodeId, tag: TagId) -> Result<(), RepoError> {
+        // todo!("update node.tags; update membership indexes");
+
+        let node = self.nodes.get_mut(&node).ok_or(RepoError::NotFound)?;
+
+        if !node.get_tags().contains(&tag) {
+            node.tags.push(tag);
+        }
+
+        Ok(())
     }
 
-    pub fn remove_tag(&mut self, _node: NodeId, _tag: TagId) -> Result<(), RepoError> {
-        todo!("update node.explicit_tags; update membership indexes");
+    pub fn untag_node(&mut self, _node: NodeId, _tag: TagId) -> Result<(), RepoError> {
+        todo!("update node.tags; update membership indexes");
     }
 
     // ----------------------------

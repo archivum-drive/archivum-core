@@ -28,6 +28,17 @@ pub struct TagRecord {
     color: TagColors,
 }
 
+impl TagRecord {
+    pub fn new(id: TagId, path: Vec<String>, color: Option<TagColors>) -> Self {
+        Self {
+            id,
+            deleted: false,
+            path,
+            color: color.unwrap_or(TagColors::Gray),
+        }
+    }
+}
+
 /// Derived hierarchy indexes (rebuildable from tags[*].path).
 #[derive(Clone, Debug, Default)]
 pub struct TagHierarchyIndex {
@@ -42,7 +53,7 @@ pub struct TagPathIndex {
     pub by_path: HashMap<String, TagId>,
 }
 
-/// Derived membership indexes (rebuildable from nodes[*].explicit_tags and hierarchy).
+/// Derived membership indexes (rebuildable from nodes[*].tags and hierarchy).
 #[derive(Clone, Debug, Default)]
 pub struct TagMembershipIndex {
     /// Nodes that explicitly contain this tag.
