@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
+use getset::Getters;
 use roaring::RoaringBitmap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -15,7 +16,8 @@ pub enum TagColors {
     Gray,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Getters)]
+#[getset(get = "pub with_prefix")]
 pub struct TagRecord {
     id: TagId,
 

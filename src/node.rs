@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Debug};
 
+use getset::Getters;
 use smallvec::SmallVec;
 
 use crate::tag::TagId;
@@ -10,9 +11,8 @@ pub struct NodeId(pub u128);
 /// Dense bitmap index used for membership bitmaps.
 pub type NodeIx = u32;
 
-#[derive(Clone, Debug)]
-// #[derive(Clone, Debug, Getters)]
-// #[getset(get_copy = "pub")]
+#[derive(Clone, Debug, Getters)]
+#[getset(get = "pub with_prefix")]
 pub struct NodeRecord {
     id: NodeId,
 
