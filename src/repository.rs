@@ -77,12 +77,18 @@ impl Repository {
         todo!("tombstone tag; remove from nodes; rebuild membership");
     }
 
-    pub fn get_tag(&self, _tag: TagId) -> Option<&TagRecord> {
-        todo!()
+    pub fn get_tag(&self, tag: TagId) -> Option<TagRecord> {
+        self.tags.get(&tag).cloned()
     }
 
-    pub fn get_tag_by_path(&mut self, _path: Vec<&str>) -> Result<TagId, RepoError> {
-        todo!("normalize path");
+    pub fn get_tag_by_path(&mut self, path: Vec<String>) -> Result<TagRecord, RepoError> {
+        for tag in self.tags.values() {
+            if tag.get_path() == &path {
+                return Ok(tag.clone());
+            }
+        }
+
+        Err(RepoError::NotFound)
     }
 
     pub fn set_tag_path(&mut self, _tag: TagId, _new_path: Vec<&str>) -> Result<(), RepoError> {
