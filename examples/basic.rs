@@ -1,7 +1,8 @@
 use archivum_core::{
-    node::{NodeId, NodeRecord},
+    node::{ NodeId, NodeRecord },
+    node_type::{ Bookmark, NodeType },
     repository::Repository,
-    tag::{TagId, TagRecord},
+    tag::{ TagId, TagRecord },
 };
 use smallvec::smallvec;
 
@@ -11,9 +12,12 @@ fn main() {
     {
         let node = NodeRecord::new(
             NodeId(0),
+            NodeType::Bookmark(
+                Bookmark::new("https://example.com".to_string(), Some("Example Site".to_string()))
+            ),
             smallvec![],
             "2025-01-01".to_string(),
-            "2025-01-01".to_string(),
+            "2025-01-01".to_string()
         );
 
         repo.upsert_node(node).unwrap();
@@ -30,4 +34,8 @@ fn main() {
     for n in repo.iter_nodes() {
         println!("{:?}", n);
     }
+
+    println!();
+
+    // println!("{}", repo.save_to_json().unwrap());
 }

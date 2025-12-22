@@ -1,23 +1,21 @@
-use std::{ collections::HashMap, fmt::Debug };
+use std::{ fmt::Debug };
 
 use getset::Getters;
 use smallvec::SmallVec;
 
-use crate::tag::TagId;
+use crate::{ node_type::NodeType, tag::TagId };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct NodeId(pub u128);
-
-/// Dense bitmap index used for membership bitmaps.
-pub type NodeIx = u32;
+pub struct NodeId(pub u32);
 
 #[derive(Clone, Debug, Getters, serde::Serialize, serde::Deserialize)]
 #[getset(get = "pub with_prefix")]
 pub struct NodeRecord {
     id: NodeId,
 
-    deleted: bool,
+    pub(crate) deleted: bool,
 
+    pub data: NodeType,
     pub(crate) tags: SmallVec<[TagId; 4]>,
 
     date_created: String,
@@ -27,6 +25,7 @@ pub struct NodeRecord {
 impl NodeRecord {
     pub fn new(
         id: NodeId,
+        data: NodeType,
         tags: SmallVec<[TagId; 4]>,
         date_created: String,
         date_updated: String
@@ -34,16 +33,10 @@ impl NodeRecord {
         Self {
             id,
             deleted: false,
+            data,
             tags,
             date_created,
             date_updated,
         }
     }
-}
-
-/// Dense node indexing for bitmap usage (rebuildable).
-#[derive(Clone, Debug, Default)]
-pub struct NodeBitmapIndex {
-    pub node_to_ix: HashMap<NodeId, NodeIx>,
-    pub ix_to_node: Vec<NodeId>,
 }

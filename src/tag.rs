@@ -21,7 +21,7 @@ pub enum TagColors {
 pub struct TagRecord {
     id: TagId,
 
-    deleted: bool,
+    pub(crate) deleted: bool,
 
     path: Vec<String>,
 
