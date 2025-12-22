@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use roaring::RoaringBitmap;
+use serde::{ Deserialize, Serialize, ser::SerializeStruct };
 
 use crate::{
-    node::{NodeBitmapIndex, NodeId, NodeRecord},
-    tag::{TagHierarchyIndex, TagId, TagMembershipIndex, TagPathIndex, TagRecord},
+    node::{ NodeBitmapIndex, NodeId, NodeRecord },
+    tag::{ TagHierarchyIndex, TagId, TagMembershipIndex, TagPathIndex, TagRecord },
 };
 
 #[derive(Clone, Debug, Default)]
@@ -19,6 +20,12 @@ pub struct Repository {
     pub tag_membership: TagMembershipIndex,
 }
 
+#[derive(Deserialize)]
+struct RepositorySerde {
+    nodes: HashMap<NodeId, NodeRecord>,
+    tags: HashMap<TagId, TagRecord>,
+}
+
 impl Repository {
     // ----------------------------
     // Construction / persistence
@@ -28,12 +35,14 @@ impl Repository {
         Self::default()
     }
 
-    pub fn load_from_bytes(_bytes: &[u8]) -> Result<Self, RepoError> {
-        todo!("deserialize canonical state; rebuild_all_indexes");
+    pub fn load_from_json(json: &str) -> Result<Self, RepoError> {
+        let repo: Repository = serde_json::from_str(json).map_err(|_| RepoError::Serialization)?;
+        Ok(repo)
     }
 
-    pub fn save_to_bytes(&self) -> Result<Vec<u8>, RepoError> {
-        todo!("serialize canonical state only");
+    pub fn save_to_json(&self) -> Result<String, RepoError> {
+        let json = serde_json::to_string_pretty(self).map_err(|_| RepoError::Serialization)?;
+        Ok(json)
     }
 
     // ----------------------------
@@ -155,11 +164,36 @@ impl Repository {
 
     pub fn node_ids_from_bitmap<'a>(
         &'a self,
-        _bm: &'a RoaringBitmap,
+        _bm: &'a RoaringBitmap
     ) -> impl Iterator<Item = NodeId> + 'a {
         todo!("map NodeIx -> NodeId; skip deleted nodes as desired");
         #[allow(unreachable_code)]
         std::iter::empty::<NodeId>()
+    }
+}
+
+impl Serialize for Repository {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        let mut state = serializer.serialize_struct("Repository", 2)?;
+
+        state.serialize_field("nodes", &self.nodes).unwrap();
+        state.serialize_field("tags", &self.tags).unwrap();
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Repository {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: serde::Deserializer<'de> {
+        let serde_repo = RepositorySerde::deserialize(deserializer)?;
+
+        Ok(Self {
+            nodes: serde_repo.nodes,
+            tags: serde_repo.tags,
+            node_index: Default::default(),
+            tag_paths: Default::default(),
+            tag_hierarchy: Default::default(),
+            tag_membership: Default::default(),
+        })
     }
 }
 
@@ -179,6 +213,5 @@ pub enum RepoError {
     InvalidTagPath,
     #[error("serialization error")]
     Serialization,
-    #[error("other: {0}")]
-    Other(String),
+    #[error("other: {0}")] Other(String),
 }
