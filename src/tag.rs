@@ -4,7 +4,7 @@ use getset::Getters;
 use roaring::RoaringBitmap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct TagId(pub u128);
+pub struct TagId(pub u32);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TagColors {

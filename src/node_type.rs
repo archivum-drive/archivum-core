@@ -10,13 +10,13 @@ pub enum NodeType {
 
 #[getset(get = "pub with_prefix")]
 pub struct File {
-    path: String,
+    filename: String,
     size: u64,
 }
 
 impl File {
-    pub fn new(path: String, size: u64) -> Self {
-        Self { path, size }
+    pub fn new(filename: String, size: u64) -> Self {
+        Self { filename, size }
     }
 }
 

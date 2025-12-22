@@ -37,5 +37,5 @@ fn main() {
 
     println!();
 
-    // println!("{}", repo.save_to_json().unwrap());
+    println!("{}", repo.save_to_json().unwrap());
 }
