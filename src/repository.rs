@@ -35,7 +35,12 @@ impl Repository {
     }
 
     pub fn load_from_json(json: &str) -> Result<Self, RepoError> {
-        let repo: Repository = serde_json::from_str(json).map_err(|_| RepoError::Serialization)?;
+        let mut repo: Repository = serde_json
+            ::from_str(json)
+            .map_err(|_| RepoError::Serialization)?;
+
+        repo.rebuild_all_indexes();
+
         Ok(repo)
     }
 
@@ -49,6 +54,7 @@ impl Repository {
     // ----------------------------
 
     pub fn rebuild_all_indexes(&mut self) {
+        self.rebuild_tag_path_index();
         self.rebuild_tag_hierarchy_from_paths();
         self.rebuild_tag_membership_indexes();
     }
@@ -61,7 +67,7 @@ impl Repository {
             path_map.insert(path_str, *tag.get_id());
         }
 
-        self.tag_paths.by_path = path_map;
+        self.tag_paths.by_path = path_map.clone();
     }
 
     pub fn rebuild_tag_hierarchy_from_paths(&mut self) {
@@ -87,6 +93,9 @@ impl Repository {
                 children_map.entry(parent_id).or_default().push(tag_id);
             }
         }
+
+        self.tag_hierarchy.parent = parent_map;
+        self.tag_hierarchy.children = children_map;
     }
 
     pub fn rebuild_tag_membership_indexes(&mut self) {
@@ -128,7 +137,9 @@ impl Repository {
     }
 
     pub fn delete_tag(&mut self, tag: TagId) -> Result<(), RepoError> {
-        let tag = self.tags.get_mut(&tag).ok_or(RepoError::NotFound)?;
+        let tag = self.tags
+            .get_mut(&tag)
+            .ok_or_else(|| RepoError::NotFound("delete_tag: tag not found".to_string()))?;
         tag.deleted = true;
 
         self.rebuild_all_indexes();
@@ -143,15 +154,17 @@ impl Repository {
         self.tags.values().filter(|tag| !tag.deleted)
     }
 
-    pub fn get_tag_by_path(&mut self, path: Vec<String>) -> Result<TagRecord, RepoError> {
+    pub fn get_tag_by_path(&mut self, path: Vec<String>) -> Result<TagId, RepoError> {
         let path_str = path.join("/");
         if let Some(tag_id) = self.tag_paths.by_path.get(&path_str) {
-            if let Some(tag) = self.tags.get(tag_id) {
-                return Ok(tag.clone());
-            }
+            return Ok(*tag_id);
         }
 
-        Err(RepoError::NotFound)
+        Err(RepoError::NotFound("get_tag_by_path: tag not found".to_string()))
+    }
+
+    pub fn get_child_tags(&self, tag: TagId) -> Option<&Vec<TagId>> {
+        self.tag_hierarchy.children.get(&tag)
     }
 
     pub fn set_tag_path(&mut self, _tag: TagId, _new_path: Vec<&str>) -> Result<(), RepoError> {
@@ -173,7 +186,9 @@ impl Repository {
     }
 
     pub fn delete_node(&mut self, node: NodeId) -> Result<(), RepoError> {
-        let node = self.nodes.get_mut(&node).ok_or(RepoError::NotFound)?;
+        let node = self.nodes
+            .get_mut(&node)
+            .ok_or_else(|| RepoError::NotFound("delete_node: node not found".to_string()))?;
         node.deleted = true;
 
         self.rebuild_all_indexes();
@@ -193,10 +208,12 @@ impl Repository {
     // ----------------------------
 
     pub fn tag_node(&mut self, node: NodeId, tag: TagId) -> Result<(), RepoError> {
-        let node = self.nodes.get_mut(&node).ok_or(RepoError::NotFound)?;
+        let node = self.nodes
+            .get_mut(&node)
+            .ok_or_else(|| RepoError::NotFound("tag_node: node not found".to_string()))?;
 
         if self.tags.get(&tag).is_none() {
-            return Err(RepoError::NotFound);
+            return Err(RepoError::NotFound("tag_node: tag not found".to_string()));
         }
 
         if !node.get_tags().contains(&tag) {
@@ -209,9 +226,11 @@ impl Repository {
     }
 
     pub fn untag_node(&mut self, _node: NodeId, _tag: TagId) -> Result<(), RepoError> {
-        let node = self.nodes.get_mut(&_node).ok_or(RepoError::NotFound)?;
+        let node = self.nodes
+            .get_mut(&_node)
+            .ok_or(RepoError::NotFound("untag_node: node not found".to_string()))?;
         if self.tags.get(&_tag).is_none() {
-            return Err(RepoError::NotFound);
+            return Err(RepoError::NotFound("untag_node: tag not found".to_string()));
         }
 
         node.tags.retain(|t| *t != _tag);
@@ -276,8 +295,7 @@ pub enum TagQuery {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RepoError {
-    #[error("not found")]
-    NotFound,
+    #[error("not found")] NotFound(String),
     #[error("invalid path")]
     InvalidTagPath,
     #[error("serialization error")]
