@@ -1,4 +1,4 @@
-use std::{ collections::HashMap, fmt::Debug };
+use std::{ collections::HashMap, fmt::Debug, str::FromStr };
 
 use getset::Getters;
 use roaring::RoaringBitmap;
@@ -20,6 +20,35 @@ pub enum TagColors {
     Yellow,
     Purple,
     Gray,
+}
+
+impl FromStr for TagColors {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "red" => Ok(TagColors::Red),
+            "blue" => Ok(TagColors::Blue),
+            "green" => Ok(TagColors::Green),
+            "yellow" => Ok(TagColors::Yellow),
+            "purple" => Ok(TagColors::Purple),
+            "gray" => Ok(TagColors::Gray),
+            _ => Err(()),
+        }
+    }
+}
+
+impl From<TagColors> for &str {
+    fn from(value: TagColors) -> Self {
+        match value {
+            TagColors::Red => "red",
+            TagColors::Blue => "blue",
+            TagColors::Green => "green",
+            TagColors::Yellow => "yellow",
+            TagColors::Purple => "purple",
+            TagColors::Gray => "gray",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Getters, serde::Serialize, serde::Deserialize)]
