@@ -5,8 +5,14 @@ use smallvec::SmallVec;
 
 use crate::{ node_type::NodeType, tag::TagId };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct NodeId(pub u32);
+
+impl From<u32> for NodeId {
+    fn from(value: u32) -> Self {
+        NodeId(value)
+    }
+}
 
 #[derive(Clone, Debug, Getters, serde::Serialize, serde::Deserialize)]
 #[getset(get = "pub with_prefix")]

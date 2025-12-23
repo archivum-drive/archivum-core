@@ -23,6 +23,9 @@ pub struct Repository {
     pub tag_paths: TagPathIndex,
     pub tag_hierarchy: TagHierarchyIndex,
     pub tag_membership: TagMembershipIndex,
+
+    pub next_node_id: NodeId,
+    pub next_tag_id: TagId,
 }
 
 impl Repository {
@@ -38,6 +41,21 @@ impl Repository {
         let mut repo: Repository = serde_json
             ::from_str(json)
             .map_err(|_| RepoError::Serialization)?;
+
+        repo.next_tag_id = (
+            repo.tags
+                .keys()
+                .map(|id| id.0)
+                .max()
+                .unwrap_or(0) + 1
+        ).into();
+        repo.next_node_id = (
+            repo.nodes
+                .keys()
+                .map(|id| id.0)
+                .max()
+                .unwrap_or(0) + 1
+        ).into();
 
         repo.rebuild_all_indexes();
 
@@ -131,6 +149,10 @@ impl Repository {
         let tag_id = *tag.get_id();
         self.tags.insert(tag_id, tag);
 
+        if tag_id.0 == self.next_tag_id.0 {
+            self.next_tag_id.0 = tag_id.0 + 1;
+        }
+
         self.rebuild_all_indexes();
 
         Ok(tag_id)
@@ -152,6 +174,15 @@ impl Repository {
 
     pub fn iter_tags(&self) -> impl Iterator<Item = &TagRecord> {
         self.tags.values().filter(|tag| !tag.deleted)
+    }
+
+    pub fn get_next_tag_id(&mut self) -> TagId {
+        // check if tag id is already used
+        while let Some(_) = self.tags.get(&TagId(self.next_tag_id.0)) {
+            self.next_tag_id.0 += 1;
+        }
+
+        self.next_tag_id
     }
 
     pub fn get_tag_by_path(&mut self, path: Vec<String>) -> Result<TagId, RepoError> {
@@ -177,12 +208,17 @@ impl Repository {
     // Node operations
     // ----------------------------
 
-    pub fn upsert_node(&mut self, node: NodeRecord) -> Result<(), RepoError> {
-        self.nodes.insert(*node.get_id(), node);
+    pub fn upsert_node(&mut self, node: NodeRecord) -> Result<NodeId, RepoError> {
+        let node_id = *node.get_id();
+        self.nodes.insert(node_id, node);
+
+        if node_id.0 == self.next_node_id.0 {
+            self.next_node_id.0 = node_id.0 + 1;
+        }
 
         self.rebuild_all_indexes();
 
-        Ok(())
+        Ok(node_id)
     }
 
     pub fn delete_node(&mut self, node: NodeId) -> Result<(), RepoError> {
@@ -201,6 +237,15 @@ impl Repository {
 
     pub fn iter_nodes(&self) -> impl Iterator<Item = &NodeRecord> {
         self.nodes.values().filter(|node| !node.deleted)
+    }
+
+    pub fn get_next_node_id(&mut self) -> NodeId {
+        // check if node id is already used
+        while let Some(_) = self.nodes.get(&NodeId(self.next_node_id.0)) {
+            self.next_node_id.0 += 1;
+        }
+
+        self.next_node_id
     }
 
     // ----------------------------
@@ -243,8 +288,17 @@ impl Repository {
     // Queries
     // ----------------------------
 
-    pub fn get_nodes_with_tag(&self, tag: TagId) -> Option<&RoaringBitmap> {
-        self.tag_membership.direct_nodes.get(&tag)
+    pub fn get_nodes_with_tag(&self, tag: TagId) -> Result<Vec<NodeId>, RepoError> {
+        let bitmap = self.tag_membership.direct_nodes.get(&tag);
+        if let Some(bm) = bitmap {
+            let node_ids: Vec<NodeId> = bm
+                .iter()
+                .map(|nid| NodeId(nid))
+                .collect();
+            Ok(node_ids)
+        } else {
+            Err(RepoError::NotFound("get_nodes_with_tag: tag not found".to_string()))
+        }
     }
 
     pub fn search_bitmap(&self, _query: TagQuery) -> Result<RoaringBitmap, RepoError> {
@@ -281,6 +335,8 @@ impl<'de> Deserialize<'de> for Repository {
             tag_paths: Default::default(),
             tag_hierarchy: Default::default(),
             tag_membership: Default::default(),
+            next_node_id: NodeId(0),
+            next_tag_id: TagId(0),
         })
     }
 }

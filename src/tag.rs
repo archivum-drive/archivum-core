@@ -3,8 +3,14 @@ use std::{ collections::HashMap, fmt::Debug };
 use getset::Getters;
 use roaring::RoaringBitmap;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TagId(pub u32);
+
+impl From<u32> for TagId {
+    fn from(value: u32) -> Self {
+        TagId(value)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TagColors {
