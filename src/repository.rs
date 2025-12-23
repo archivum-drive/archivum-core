@@ -178,7 +178,7 @@ impl Repository {
 
     pub fn get_next_tag_id(&mut self) -> TagId {
         // check if tag id is already used
-        while let Some(_) = self.tags.get(&TagId(self.next_tag_id.0)) {
+        while self.tags.contains_key(&TagId(self.next_tag_id.0)) {
             self.next_tag_id.0 += 1;
         }
 
@@ -241,7 +241,7 @@ impl Repository {
 
     pub fn get_next_node_id(&mut self) -> NodeId {
         // check if node id is already used
-        while let Some(_) = self.nodes.get(&NodeId(self.next_node_id.0)) {
+        while self.nodes.contains_key(&NodeId(self.next_node_id.0)) {
             self.next_node_id.0 += 1;
         }
 
@@ -257,7 +257,7 @@ impl Repository {
             .get_mut(&node)
             .ok_or_else(|| RepoError::NotFound("tag_node: node not found".to_string()))?;
 
-        if self.tags.get(&tag).is_none() {
+        if !self.tags.contains_key(&tag) {
             return Err(RepoError::NotFound("tag_node: tag not found".to_string()));
         }
 
@@ -274,7 +274,7 @@ impl Repository {
         let node = self.nodes
             .get_mut(&_node)
             .ok_or(RepoError::NotFound("untag_node: node not found".to_string()))?;
-        if self.tags.get(&_tag).is_none() {
+        if !self.tags.contains_key(&_tag) {
             return Err(RepoError::NotFound("untag_node: tag not found".to_string()));
         }
 
@@ -291,10 +291,7 @@ impl Repository {
     pub fn get_nodes_with_tag(&self, tag: TagId) -> Result<Vec<NodeId>, RepoError> {
         let bitmap = self.tag_membership.direct_nodes.get(&tag);
         if let Some(bm) = bitmap {
-            let node_ids: Vec<NodeId> = bm
-                .iter()
-                .map(|nid| NodeId(nid))
-                .collect();
+            let node_ids: Vec<NodeId> = bm.iter().map(NodeId).collect();
             Ok(node_ids)
         } else {
             Err(RepoError::NotFound("get_nodes_with_tag: tag not found".to_string()))
