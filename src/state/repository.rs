@@ -4,6 +4,7 @@ use roaring::RoaringBitmap;
 use serde::{ Deserialize, Serialize, ser::SerializeStruct };
 
 use crate::{
+    blob::{ BlobError, DataBlob },
     node::{ NodeId, NodeRecord },
     tag::{ TagHierarchyIndex, TagId, TagMembershipIndex, TagPathIndex, TagRecord },
 };
@@ -142,6 +143,50 @@ impl Repository {
     }
 
     // ----------------------------
+    // Node operations
+    // ----------------------------
+
+    pub fn upsert_node(&mut self, node: NodeRecord) -> Result<NodeId, RepoError> {
+        let node_id = *node.get_id();
+        self.nodes.insert(node_id, node);
+
+        if node_id.0 == self.next_node_id.0 {
+            self.next_node_id.0 = node_id.0 + 1;
+        }
+
+        self.rebuild_all_indexes();
+
+        Ok(node_id)
+    }
+
+    pub fn delete_node(&mut self, node: NodeId) -> Result<(), RepoError> {
+        let node = self.nodes
+            .get_mut(&node)
+            .ok_or_else(|| RepoError::NotFound("delete_node: node not found".to_string()))?;
+        node.deleted = true;
+
+        self.rebuild_all_indexes();
+        Ok(())
+    }
+
+    pub fn get_node(&self, node: NodeId) -> Option<&NodeRecord> {
+        self.nodes.get(&node)
+    }
+
+    pub fn iter_nodes(&self) -> impl Iterator<Item = &NodeRecord> {
+        self.nodes.values().filter(|node| !node.deleted)
+    }
+
+    pub fn get_next_node_id(&mut self) -> NodeId {
+        // check if node id is already used
+        while self.nodes.contains_key(&NodeId(self.next_node_id.0)) {
+            self.next_node_id.0 += 1;
+        }
+
+        self.next_node_id
+    }
+
+    // ----------------------------
     // Tag operations
     // ----------------------------
 
@@ -205,64 +250,16 @@ impl Repository {
     }
 
     // ----------------------------
-    // Node operations
-    // ----------------------------
-
-    pub fn upsert_node(&mut self, node: NodeRecord) -> Result<NodeId, RepoError> {
-        let node_id = *node.get_id();
-        self.nodes.insert(node_id, node);
-
-        if node_id.0 == self.next_node_id.0 {
-            self.next_node_id.0 = node_id.0 + 1;
-        }
-
-        self.rebuild_all_indexes();
-
-        Ok(node_id)
-    }
-
-    pub fn delete_node(&mut self, node: NodeId) -> Result<(), RepoError> {
-        let node = self.nodes
-            .get_mut(&node)
-            .ok_or_else(|| RepoError::NotFound("delete_node: node not found".to_string()))?;
-        node.deleted = true;
-
-        self.rebuild_all_indexes();
-        Ok(())
-    }
-
-    pub fn get_node(&self, node: NodeId) -> Option<&NodeRecord> {
-        self.nodes.get(&node)
-    }
-
-    pub fn iter_nodes(&self) -> impl Iterator<Item = &NodeRecord> {
-        self.nodes.values().filter(|node| !node.deleted)
-    }
-
-    pub fn get_next_node_id(&mut self) -> NodeId {
-        // check if node id is already used
-        while self.nodes.contains_key(&NodeId(self.next_node_id.0)) {
-            self.next_node_id.0 += 1;
-        }
-
-        self.next_node_id
-    }
-
-    // ----------------------------
     // Data blob operations
     // ----------------------------
     pub fn upload_data<S: crate::blob::BlobStore>(
         &mut self,
         store: &mut S,
         data: &[u8]
-    ) -> Result<crate::blob::DataBlob, RepoError>
-        where S::Error: std::fmt::Display
+    ) -> Result<DataBlob, BlobError>
+        where <S as crate::blob::BlobStore>::Error: std::fmt::Debug
     {
-        let blob = crate::blob::DataBlob
-            ::from_data(store, data)
-            .map_err(|e| RepoError::Other(e.to_string()))?;
-
-        Ok(blob)
+        DataBlob::from_data(store, data)
     }
 
     // ----------------------------

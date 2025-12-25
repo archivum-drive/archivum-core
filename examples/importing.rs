@@ -1,4 +1,4 @@
-use archivum_core::{ repository::Repository };
+use archivum_core::{ state::repository::Repository };
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

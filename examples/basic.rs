@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use archivum_core::{
-    blob::{ BlobId, BlobStore, DataBlob },
+    blob::{ BlobId, BlobStore },
     node::{ NodeId, NodeRecord },
     node_type::{ Bookmark, NodeType },
-    repository::Repository,
+    state::repository::Repository,
     tag::{ TagId, TagRecord },
 };
 use smallvec::smallvec;
