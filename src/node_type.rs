@@ -1,5 +1,7 @@
 use getset::Getters;
 
+use crate::blob::DataBlob;
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum NodeType {
     File(File),
@@ -11,24 +13,25 @@ pub enum NodeType {
 #[getset(get = "pub with_prefix")]
 pub struct File {
     filename: String,
-    size: u64,
+    mime_type: Option<String>,
+    data_ref: DataBlob,
 }
 
 impl File {
-    pub fn new(filename: String, size: u64) -> Self {
-        Self { filename, size }
+    pub fn new(filename: String, mime_type: Option<String>, data_ref: DataBlob) -> Self {
+        Self { filename, mime_type, data_ref }
     }
 }
 
 #[derive(Clone, Debug, Getters, serde::Serialize, serde::Deserialize)]
 #[getset(get = "pub with_prefix")]
 pub struct Bookmark {
-    url: String,
+    data_ref: DataBlob,
     title: Option<String>,
 }
 
 impl Bookmark {
-    pub fn new(url: String, title: Option<String>) -> Self {
-        Self { url, title }
+    pub fn new(data_ref: DataBlob, title: Option<String>) -> Self {
+        Self { data_ref, title }
     }
 }

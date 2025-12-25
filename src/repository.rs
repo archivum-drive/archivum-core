@@ -249,6 +249,23 @@ impl Repository {
     }
 
     // ----------------------------
+    // Data blob operations
+    // ----------------------------
+    pub fn upload_data<S: crate::blob::BlobStore>(
+        &mut self,
+        store: &mut S,
+        data: &[u8]
+    ) -> Result<crate::blob::DataBlob, RepoError>
+        where S::Error: std::fmt::Display
+    {
+        let blob = crate::blob::DataBlob
+            ::from_data(store, data)
+            .map_err(|e| RepoError::Other(e.to_string()))?;
+
+        Ok(blob)
+    }
+
+    // ----------------------------
     // Tagging operations
     // ----------------------------
 

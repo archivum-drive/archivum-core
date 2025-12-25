@@ -21,7 +21,7 @@ pub struct NodeRecord {
 
     pub(crate) deleted: bool,
 
-    pub data: NodeType,
+    pub data_ref: NodeType,
     pub(crate) tags: SmallVec<[TagId; 4]>,
 
     date_created: String,
@@ -39,7 +39,7 @@ impl NodeRecord {
         Self {
             id,
             deleted: false,
-            data,
+            data_ref: data,
             tags,
             date_created,
             date_updated,

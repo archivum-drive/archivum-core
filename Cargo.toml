@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+blake3 = { version = "1.8.2", features = ["serde"] }
 getset = "0.1.6"
 roaring = "0.11.2"
 serde = { version = "1.0.228", features = ["derive"] }
